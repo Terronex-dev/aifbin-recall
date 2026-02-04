@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Engram CLI - Local-first memory server for AI agents
+ * AIF-BIN Recall CLI - Local-first memory server for AI agents
  */
 
 import { Command } from 'commander';
@@ -19,7 +19,7 @@ const program = new Command();
 
 // Resolve default DB path
 function getDefaultDbPath(): string {
-  const configDir = path.join(os.homedir(), '.engram');
+  const configDir = path.join(os.homedir(), '.aifbin-recall');
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
   }
@@ -27,7 +27,7 @@ function getDefaultDbPath(): string {
 }
 
 program
-  .name('engram')
+  .name('aifbin-recall')
   .description('Local-first memory server for AI agents')
   .version('0.1.0')
   .option('-d, --db <path>', 'Database path', getDefaultDbPath());
@@ -94,7 +94,7 @@ program
     const collections = db.listCollections();
 
     if (collections.length === 0) {
-      console.log('No collections found. Use "engram index" to create one.');
+      console.log('No collections found. Use "aifbin-recall index" to create one.');
     } else {
       console.log('Collections:\n');
       for (const col of collections) {
@@ -173,7 +173,7 @@ program
   .description('Show database information')
   .action(() => {
     const dbPath = program.opts().db;
-    console.log(`Engram v0.1.0`);
+    console.log(`AIF-BIN Recall v0.1.0`);
     console.log(`Database: ${dbPath}`);
     console.log('');
 
@@ -188,7 +188,7 @@ program
       console.log(`Total chunks: ${totalChunks}`);
       db.close();
     } else {
-      console.log('Database not found. Run "engram index" to create one.');
+      console.log('Database not found. Run "aifbin-recall index" to create one.');
     }
   });
 

@@ -1,5 +1,5 @@
 /**
- * AIF-BIN file indexer for Engram
+ * AIF-BIN file indexer for AIF-BIN Recall
  * Parses AIF-BIN v2 binary format
  */
 

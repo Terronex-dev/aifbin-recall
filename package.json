@@ -1,11 +1,11 @@
 {
-  "name": "@terronex/engram",
+  "name": "@terronex/aifbin-recall",
   "version": "0.1.0",
   "description": "Local-first memory server for AI agents. Query AIF-BIN semantic memory files via HTTP/MCP.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "engram": "./dist/cli.js"
+    "aifbin-recall": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -31,11 +31,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Terronex-dev/engram.git"
+    "url": "https://github.com/Terronex-dev/aifbin-recall.git"
   },
-  "homepage": "https://github.com/Terronex-dev/engram#readme",
+  "homepage": "https://github.com/Terronex-dev/aifbin-recall#readme",
   "bugs": {
-    "url": "https://github.com/Terronex-dev/engram/issues"
+    "url": "https://github.com/Terronex-dev/aifbin-recall/issues"
   },
   "engines": {
     "node": ">=18"

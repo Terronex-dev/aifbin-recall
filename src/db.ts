@@ -1,5 +1,5 @@
 /**
- * SQLite database management for Engram
+ * SQLite database management for AIF-BIN Recall
  */
 
 import Database from 'better-sqlite3';

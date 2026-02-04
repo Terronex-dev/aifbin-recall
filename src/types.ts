@@ -1,5 +1,5 @@
 /**
- * Core types for Engram memory server
+ * Core types for AIF-BIN Recall memory server
  */
 
 export interface MemoryChunk {
@@ -71,7 +71,7 @@ export const DEFAULT_CONFIG: EngramConfig = {
     host: 'localhost',
   },
   index: {
-    path: '~/.engram/index.db',
+    path: '~/.aifbin-recall/index.db',
   },
   search: {
     defaultLimit: 10,

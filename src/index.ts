@@ -1,5 +1,5 @@
 /**
- * Engram - Local-first memory server for AI agents
+ * AIF-BIN Recall - Local-first memory server for AI agents
  * 
  * @example
  * ```typescript

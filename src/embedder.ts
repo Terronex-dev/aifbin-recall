@@ -1,5 +1,5 @@
 /**
- * Local embedding generation for Engram
+ * Local embedding generation for AIF-BIN Recall
  * Uses @xenova/transformers to run sentence-transformers models locally
  */
 

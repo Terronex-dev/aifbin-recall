@@ -1,5 +1,5 @@
 /**
- * HTTP server for Engram
+ * HTTP server for AIF-BIN Recall
  */
 
 import express, { Request, Response, NextFunction } from 'express';
@@ -257,7 +257,7 @@ export function startServer(options: ServerOptions): void {
   const app = createServer(options);
 
   app.listen(config.port, config.host, () => {
-    console.log(`🧠 Engram server running at http://${config.host}:${config.port}`);
+    console.log(`AIF-BIN Recall server running at http://${config.host}:${config.port}`);
     console.log('');
     console.log('Endpoints:');
     console.log('  GET  /health          - Health check');

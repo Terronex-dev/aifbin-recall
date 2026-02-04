@@ -1,5 +1,5 @@
 /**
- * MCP (Model Context Protocol) server for Engram
+ * MCP (Model Context Protocol) server for AIF-BIN Recall
  * Enables AI agents to query semantic memories
  */
 
@@ -21,7 +21,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
 
   const server = new Server(
     {
-      name: 'engram',
+      name: 'aifbin-recall',
       version: '0.1.0',
     },
     {
@@ -36,7 +36,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
     return {
       tools: [
         {
-          name: 'engram_search',
+          name: 'recall_search',
           description: 'Search semantic memories using natural language. Automatically embeds your query text. Returns relevant text chunks with similarity scores.',
           inputSchema: {
             type: 'object',
@@ -63,7 +63,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
           },
         },
         {
-          name: 'engram_recall',
+          name: 'recall_get',
           description: 'Retrieve a specific memory chunk by ID',
           inputSchema: {
             type: 'object',
@@ -77,7 +77,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
           },
         },
         {
-          name: 'engram_collections',
+          name: 'recall_collections',
           description: 'List all available memory collections',
           inputSchema: {
             type: 'object',
@@ -85,7 +85,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
           },
         },
         {
-          name: 'engram_index',
+          name: 'recall_index',
           description: 'Index a directory of AIF-BIN files into a collection',
           inputSchema: {
             type: 'object',
@@ -116,7 +116,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
 
     try {
       switch (name) {
-        case 'engram_search': {
+        case 'recall_search': {
           const { embedding, query, collection, limit } = args as {
             embedding?: number[];
             query: string;
@@ -159,7 +159,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
           };
         }
 
-        case 'engram_recall': {
+        case 'recall_get': {
           const { id } = args as { id: string };
           const chunk = search.recall(id);
 
@@ -181,12 +181,12 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
           };
         }
 
-        case 'engram_collections': {
+        case 'recall_collections': {
           const collections = db.listCollections();
 
           if (collections.length === 0) {
             return {
-              content: [{ type: 'text', text: 'No collections found. Use engram_index to create one.' }],
+              content: [{ type: 'text', text: 'No collections found. Use recall_index to create one.' }],
             };
           }
 
@@ -203,7 +203,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
           };
         }
 
-        case 'engram_index': {
+        case 'recall_index': {
           const { path: dirPath, collection, recursive } = args as {
             path: string;
             collection: string;
@@ -240,5 +240,5 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
   // Start the server
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('🧠 Engram MCP server running');
+  console.error('AIF-BIN Recall MCP server running');
 }

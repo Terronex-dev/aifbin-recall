@@ -1,8 +1,8 @@
-# Engram
+# AIF-BIN Recall
 
 **Local-first memory server for AI agents.**
 
-Engram indexes collections of [AIF-BIN](https://github.com/Terronex-dev/aifbin) semantic memory files and provides fast retrieval via HTTP API and MCP (Model Context Protocol) for AI agent integration.
+AIF-BIN Recall indexes collections of [AIF-BIN](https://github.com/Terronex-dev/aifbin) semantic memory files and provides fast retrieval via HTTP API and MCP (Model Context Protocol) for AI agent integration.
 
 ## Features
 
@@ -17,23 +17,23 @@ Engram indexes collections of [AIF-BIN](https://github.com/Terronex-dev/aifbin) 
 
 ```bash
 # npm
-npm install -g @terronex/engram
+npm install -g @terronex/aifbin-recall
 
 # bun
-bun install -g @terronex/engram
+bun install -g @terronex/aifbin-recall
 ```
 
 ## Quick Start
 
 ```bash
 # Index a directory of .aif-bin files
-engram index ./memories --collection my-project
+aifbin-recall index ./memories --collection my-project
 
 # Start the server
-engram serve
+aifbin-recall serve
 
 # Search via CLI
-engram search "what decisions did we make about the API?"
+aifbin-recall search "what decisions did we make about the API?"
 
 # Or query the HTTP API
 curl "http://localhost:3847/search?q=API+decisions&collection=my-project"
@@ -41,13 +41,13 @@ curl "http://localhost:3847/search?q=API+decisions&collection=my-project"
 
 ## MCP Integration
 
-Add Engram to your AI agent's MCP config:
+Add AIF-BIN Recall to your AI agent's MCP config:
 
 ```json
 {
   "mcpServers": {
-    "engram": {
-      "command": "engram",
+    "aifbin-recall": {
+      "command": "aifbin-recall",
       "args": ["mcp"]
     }
   }
@@ -55,32 +55,32 @@ Add Engram to your AI agent's MCP config:
 ```
 
 Available MCP tools:
-- `engram_search` — Semantic search across collections
-- `engram_recall` — Retrieve specific memories by ID
-- `engram_collections` — List available collections
-- `engram_ingest` — Add new files to a collection
+- `recall_search` — Semantic search across collections
+- `recall_get` — Retrieve specific memories by ID
+- `recall_collections` — List available collections
+- `recall_index` — Add new files to a collection
 
 ## HTTP API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/search` | GET | Semantic search with optional filters |
+| `/search` | GET/POST | Semantic search with optional filters |
 | `/recall/:id` | GET | Retrieve specific memory chunk |
 | `/collections` | GET | List all collections |
 | `/collections/:name` | POST | Create/update collection |
-| `/ingest` | POST | Add files to collection |
+| `/index` | POST | Index directory of .aif-bin files |
 | `/health` | GET | Server health check |
 
 ## Configuration
 
 ```yaml
-# ~/.engram/config.yaml
+# ~/.aifbin-recall/config.yaml
 server:
   port: 3847
   host: localhost
 
 index:
-  path: ~/.engram/index.db
+  path: ~/.aifbin-recall/index.db
   
 search:
   default_limit: 10
@@ -89,7 +89,7 @@ search:
 
 ## How It Works
 
-1. **Indexing**: Engram reads `.aif-bin` files (created by [AIF-BIN Pro](https://github.com/Terronex-dev/aifbin-pro)) and extracts their embedded vectors and text chunks into a local SQLite database.
+1. **Indexing**: AIF-BIN Recall reads `.aif-bin` files (created by [AIF-BIN Pro](https://github.com/Terronex-dev/aifbin-pro)) and extracts their embedded vectors and text chunks into a local SQLite database.
 
 2. **Search**: Queries are embedded using the same model, then matched against indexed vectors using cosine similarity. Optional BM25 keyword matching provides hybrid retrieval.
 
@@ -99,7 +99,7 @@ search:
 
 - **[AIF-BIN](https://github.com/Terronex-dev/aifbin)** — Core specification and SDKs
 - **[AIF-BIN Pro](https://github.com/Terronex-dev/aifbin-pro)** — CLI for creating .aif-bin files
-- **Engram** — Memory server for querying collections *(you are here)*
+- **AIF-BIN Recall** — Memory server for querying collections *(you are here)*
 
 ## License
 

@@ -1,5 +1,5 @@
 /**
- * Search functionality for Engram
+ * Search functionality for AIF-BIN Recall
  */
 
 import type { MemoryChunk, SearchResult, SearchOptions, SearchConfig } from './types.js';
