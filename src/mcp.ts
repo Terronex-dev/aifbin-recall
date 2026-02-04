@@ -1,0 +1,240 @@
+/**
+ * MCP (Model Context Protocol) server for Engram
+ * Enables AI agents to query semantic memories
+ */
+
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import { EngramDB } from './db.js';
+import { SearchEngine } from './search.js';
+import { Indexer } from './indexer.js';
+
+export async function startMcpServer(db: EngramDB): Promise<void> {
+  const search = new SearchEngine(db);
+  const indexer = new Indexer(db);
+
+  const server = new Server(
+    {
+      name: 'engram',
+      version: '0.1.0',
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
+
+  // List available tools
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: [
+        {
+          name: 'engram_search',
+          description: 'Search semantic memories using natural language. Returns relevant text chunks with similarity scores.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Natural language search query',
+              },
+              embedding: {
+                type: 'array',
+                items: { type: 'number' },
+                description: 'Query embedding vector (required for semantic search)',
+              },
+              collection: {
+                type: 'string',
+                description: 'Collection name to search (optional, searches all if omitted)',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum results to return (default: 10)',
+              },
+            },
+            required: ['embedding'],
+          },
+        },
+        {
+          name: 'engram_recall',
+          description: 'Retrieve a specific memory chunk by ID',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: {
+                type: 'string',
+                description: 'Chunk ID to retrieve',
+              },
+            },
+            required: ['id'],
+          },
+        },
+        {
+          name: 'engram_collections',
+          description: 'List all available memory collections',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+          },
+        },
+        {
+          name: 'engram_index',
+          description: 'Index a directory of AIF-BIN files into a collection',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              path: {
+                type: 'string',
+                description: 'Directory path containing .aif-bin files',
+              },
+              collection: {
+                type: 'string',
+                description: 'Collection name to index into',
+              },
+              recursive: {
+                type: 'boolean',
+                description: 'Search subdirectories (default: true)',
+              },
+            },
+            required: ['path', 'collection'],
+          },
+        },
+      ],
+    };
+  });
+
+  // Handle tool calls
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+
+    try {
+      switch (name) {
+        case 'engram_search': {
+          const { embedding, query, collection, limit } = args as {
+            embedding: number[];
+            query?: string;
+            collection?: string;
+            limit?: number;
+          };
+
+          if (!embedding || !Array.isArray(embedding)) {
+            return {
+              content: [{ type: 'text', text: 'Error: embedding array required' }],
+              isError: true,
+            };
+          }
+
+          const options = { collection, limit: limit || 10 };
+          let results;
+
+          if (query) {
+            results = await search.hybridSearch(embedding, query, options);
+          } else {
+            results = await search.search(embedding, options);
+          }
+
+          const formatted = results.map((r, i) => 
+            `[${i + 1}] Score: ${r.score.toFixed(3)}\n` +
+            `    Source: ${r.chunk.sourceFile}\n` +
+            `    Text: ${r.chunk.text.slice(0, 500)}${r.chunk.text.length > 500 ? '...' : ''}\n` +
+            `    ID: ${r.chunk.id}`
+          ).join('\n\n');
+
+          return {
+            content: [{
+              type: 'text',
+              text: results.length > 0 
+                ? `Found ${results.length} results:\n\n${formatted}`
+                : 'No results found.',
+            }],
+          };
+        }
+
+        case 'engram_recall': {
+          const { id } = args as { id: string };
+          const chunk = search.recall(id);
+
+          if (!chunk) {
+            return {
+              content: [{ type: 'text', text: `Chunk not found: ${id}` }],
+              isError: true,
+            };
+          }
+
+          return {
+            content: [{
+              type: 'text',
+              text: `Source: ${chunk.sourceFile}\n` +
+                    `Chunk: ${chunk.chunkIndex}\n` +
+                    `Created: ${chunk.createdAt.toISOString()}\n\n` +
+                    `Text:\n${chunk.text}`,
+            }],
+          };
+        }
+
+        case 'engram_collections': {
+          const collections = db.listCollections();
+
+          if (collections.length === 0) {
+            return {
+              content: [{ type: 'text', text: 'No collections found. Use engram_index to create one.' }],
+            };
+          }
+
+          const formatted = collections.map(c =>
+            `• ${c.name}: ${c.chunkCount} chunks from ${c.fileCount} files` +
+            (c.description ? ` - ${c.description}` : '')
+          ).join('\n');
+
+          return {
+            content: [{
+              type: 'text',
+              text: `Available collections:\n\n${formatted}`,
+            }],
+          };
+        }
+
+        case 'engram_index': {
+          const { path: dirPath, collection, recursive } = args as {
+            path: string;
+            collection: string;
+            recursive?: boolean;
+          };
+
+          const result = indexer.indexDirectory(dirPath, {
+            collection,
+            recursive: recursive !== false,
+          });
+
+          return {
+            content: [{
+              type: 'text',
+              text: `Indexed ${result.files} files (${result.chunks} chunks) into collection "${collection}"`,
+            }],
+          };
+        }
+
+        default:
+          return {
+            content: [{ type: 'text', text: `Unknown tool: ${name}` }],
+            isError: true,
+          };
+      }
+    } catch (err) {
+      return {
+        content: [{ type: 'text', text: `Error: ${err}` }],
+        isError: true,
+      };
+    }
+  });
+
+  // Start the server
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('🧠 Engram MCP server running');
+}
