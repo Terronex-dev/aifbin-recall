@@ -13,6 +13,7 @@ import { Indexer } from './indexer.js';
 import { startServer } from './server.js';
 import { startMcpServer } from './mcp.js';
 import { DEFAULT_CONFIG } from './types.js';
+import { Embedder, EMBEDDING_MODELS, type EmbeddingModelName } from './embedder.js';
 
 const program = new Command();
 
@@ -110,41 +111,37 @@ program
     db.close();
   });
 
-// Search command (basic, requires embedding file or stdin)
+// Search command - now with built-in embedding!
 program
   .command('search <query>')
-  .description('Search memories (note: requires embedding, mainly for testing)')
+  .description('Search memories using natural language')
   .option('-c, --collection <name>', 'Collection to search')
   .option('-n, --limit <count>', 'Number of results', '10')
-  .option('-e, --embedding <file>', 'JSON file containing query embedding')
+  .option('-m, --model <model>', 'Embedding model (minilm, mpnet, bge-small, bge-base, e5-small)', 'minilm')
+  .option('-e, --embedding <file>', 'JSON file containing pre-computed query embedding (optional)')
   .action(async (query, options) => {
     const dbPath = program.opts().db;
     const db = new EngramDB(dbPath);
     const search = new SearchEngine(db);
 
-    // For CLI testing, we need an embedding file
-    if (!options.embedding) {
-      console.log('Note: CLI search requires an embedding vector.');
-      console.log('');
-      console.log('Options:');
-      console.log('  1. Use the HTTP API: POST /search with embedding');
-      console.log('  2. Use MCP: AI agents can provide embeddings');
-      console.log('  3. Provide embedding file: --embedding query.json');
-      console.log('');
-      console.log('Example embedding file format:');
-      console.log('  { "embedding": [0.1, 0.2, ...] }');
-      db.close();
-      return;
-    }
-
     try {
-      const embeddingData = JSON.parse(fs.readFileSync(options.embedding, 'utf-8'));
-      const embedding = embeddingData.embedding || embeddingData;
+      let embedding: number[];
 
-      if (!Array.isArray(embedding)) {
-        console.error('Error: embedding must be an array');
-        db.close();
-        return;
+      if (options.embedding) {
+        // Use provided embedding file
+        const embeddingData = JSON.parse(fs.readFileSync(options.embedding, 'utf-8'));
+        embedding = embeddingData.embedding || embeddingData;
+        if (!Array.isArray(embedding)) {
+          console.error('Error: embedding must be an array');
+          db.close();
+          return;
+        }
+      } else {
+        // Generate embedding locally
+        console.log(`Embedding query with ${options.model}...`);
+        const embedder = new Embedder(options.model as EmbeddingModelName);
+        embedding = await embedder.embed(query);
+        console.log(`Embedding generated (${embedding.length} dims)\n`);
       }
 
       const results = await search.hybridSearch(embedding, query, {
@@ -157,8 +154,8 @@ program
       } else {
         console.log(`Found ${results.length} results:\n`);
         for (const [i, r] of results.entries()) {
-          console.log(`[${i + 1}] Score: ${r.score.toFixed(4)}`);
-          console.log(`    Source: ${r.chunk.sourceFile}`);
+          console.log(`[${i + 1}] Score: ${r.score.toFixed(4)} (vector: ${r.vectorScore.toFixed(4)}, keyword: ${r.keywordScore?.toFixed(4) || 'n/a'})`);
+          console.log(`    Source: ${path.basename(r.chunk.sourceFile)}`);
           console.log(`    Text: ${r.chunk.text.slice(0, 200)}${r.chunk.text.length > 200 ? '...' : ''}`);
           console.log('');
         }

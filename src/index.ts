@@ -21,6 +21,7 @@
 export { EngramDB } from './db.js';
 export { SearchEngine, cosineSimilarity } from './search.js';
 export { Indexer, parseAifBinFile, findAifBinFiles } from './indexer.js';
+export { Embedder, embedQuery, getDefaultEmbedder, EMBEDDING_MODELS, type EmbeddingModelName } from './embedder.js';
 
 // Server functions
 export { createServer, startServer } from './server.js';

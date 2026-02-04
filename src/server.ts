@@ -9,6 +9,7 @@ import { DEFAULT_CONFIG } from './types.js';
 import { EngramDB } from './db.js';
 import { SearchEngine } from './search.js';
 import { Indexer } from './indexer.js';
+import { Embedder, type EmbeddingModelName } from './embedder.js';
 
 export interface ServerOptions {
   db: EngramDB;
@@ -86,13 +87,38 @@ export function createServer(options: ServerOptions): express.Application {
     }
   });
 
-  // Search (requires embedding in request body)
+  // Lazy-loaded embedder for text queries
+  let embedder: Embedder | null = null;
+  
+  async function getEmbedder(model?: EmbeddingModelName): Promise<Embedder> {
+    if (!embedder) {
+      embedder = new Embedder(model || 'minilm');
+      await embedder.init();
+    }
+    return embedder;
+  }
+
+  // Search - accepts either embedding array OR text query (will embed automatically)
   app.post('/search', async (req: Request, res: Response) => {
     try {
-      const { embedding, text, collection, limit, threshold, hybridWeight } = req.body;
+      const { embedding, query, text, collection, limit, threshold, hybridWeight, model } = req.body;
+      
+      // Use 'query' or 'text' for the search text
+      const queryText = query || text;
 
-      if (!embedding || !Array.isArray(embedding)) {
-        res.status(400).json({ error: 'embedding array required' });
+      // Get or generate embedding
+      let queryEmbedding: number[];
+      if (embedding && Array.isArray(embedding)) {
+        queryEmbedding = embedding;
+      } else if (queryText) {
+        // Auto-embed the query text
+        const emb = await getEmbedder(model);
+        queryEmbedding = await emb.embed(queryText);
+      } else {
+        res.status(400).json({ 
+          error: 'Either "query" (text) or "embedding" (array) required',
+          hint: 'Send { "query": "your search text" } for automatic embedding',
+        });
         return;
       }
 
@@ -104,10 +130,10 @@ export function createServer(options: ServerOptions): express.Application {
       };
 
       let results;
-      if (text && hybridWeight < 1.0) {
-        results = await search.hybridSearch(embedding, text, options);
+      if (queryText && (hybridWeight ?? 0.7) < 1.0) {
+        results = await search.hybridSearch(queryEmbedding, queryText, options);
       } else {
-        results = await search.search(embedding, options);
+        results = await search.search(queryEmbedding, options);
       }
 
       res.json({
@@ -127,12 +153,47 @@ export function createServer(options: ServerOptions): express.Application {
     }
   });
 
-  // Simple GET search (for testing, limited functionality)
+  // GET search - simple text query
   app.get('/search', async (req: Request, res: Response) => {
-    res.status(400).json({
-      error: 'GET /search not supported. Use POST /search with embedding array.',
-      hint: 'To search, POST { "embedding": [...], "text": "optional query", "collection": "name" }',
-    });
+    try {
+      const { q, query, collection, limit } = req.query;
+      const queryText = (q || query) as string;
+
+      if (!queryText) {
+        res.status(400).json({
+          error: 'Query parameter "q" or "query" required',
+          example: '/search?q=your+search+text&collection=myproject',
+        });
+        return;
+      }
+
+      // Embed the query
+      const emb = await getEmbedder();
+      const queryEmbedding = await emb.embed(queryText);
+
+      const options: SearchOptions = {
+        collection: collection as string,
+        limit: limit ? parseInt(limit as string, 10) : 10,
+      };
+
+      const results = await search.hybridSearch(queryEmbedding, queryText, options);
+
+      res.json({
+        query: queryText,
+        results: results.map(r => ({
+          id: r.chunk.id,
+          text: r.chunk.text,
+          score: r.score,
+          vectorScore: r.vectorScore,
+          keywordScore: r.keywordScore,
+          sourceFile: r.chunk.sourceFile,
+          chunkIndex: r.chunk.chunkIndex,
+          metadata: r.chunk.metadata,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
   });
 
   // Recall specific chunk

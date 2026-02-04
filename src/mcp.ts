@@ -12,10 +12,12 @@ import {
 import { EngramDB } from './db.js';
 import { SearchEngine } from './search.js';
 import { Indexer } from './indexer.js';
+import { Embedder, type EmbeddingModelName } from './embedder.js';
 
 export async function startMcpServer(db: EngramDB): Promise<void> {
   const search = new SearchEngine(db);
   const indexer = new Indexer(db);
+  const embedder = new Embedder('minilm');
 
   const server = new Server(
     {
@@ -35,18 +37,18 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
       tools: [
         {
           name: 'engram_search',
-          description: 'Search semantic memories using natural language. Returns relevant text chunks with similarity scores.',
+          description: 'Search semantic memories using natural language. Automatically embeds your query text. Returns relevant text chunks with similarity scores.',
           inputSchema: {
             type: 'object',
             properties: {
               query: {
                 type: 'string',
-                description: 'Natural language search query',
+                description: 'Natural language search query (will be embedded automatically)',
               },
               embedding: {
                 type: 'array',
                 items: { type: 'number' },
-                description: 'Query embedding vector (required for semantic search)',
+                description: 'Pre-computed query embedding vector (optional, query text is preferred)',
               },
               collection: {
                 type: 'string',
@@ -57,7 +59,7 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
                 description: 'Maximum results to return (default: 10)',
               },
             },
-            required: ['embedding'],
+            required: ['query'],
           },
         },
         {
@@ -116,27 +118,29 @@ export async function startMcpServer(db: EngramDB): Promise<void> {
       switch (name) {
         case 'engram_search': {
           const { embedding, query, collection, limit } = args as {
-            embedding: number[];
-            query?: string;
+            embedding?: number[];
+            query: string;
             collection?: string;
             limit?: number;
           };
 
-          if (!embedding || !Array.isArray(embedding)) {
+          if (!query && (!embedding || !Array.isArray(embedding))) {
             return {
-              content: [{ type: 'text', text: 'Error: embedding array required' }],
+              content: [{ type: 'text', text: 'Error: query text required' }],
               isError: true,
             };
           }
 
-          const options = { collection, limit: limit || 10 };
-          let results;
-
-          if (query) {
-            results = await search.hybridSearch(embedding, query, options);
+          // Generate embedding from query text if not provided
+          let queryEmbedding: number[];
+          if (embedding && Array.isArray(embedding)) {
+            queryEmbedding = embedding;
           } else {
-            results = await search.search(embedding, options);
+            queryEmbedding = await embedder.embed(query);
           }
+
+          const options = { collection, limit: limit || 10 };
+          const results = await search.hybridSearch(queryEmbedding, query, options);
 
           const formatted = results.map((r, i) => 
             `[${i + 1}] Score: ${r.score.toFixed(3)}\n` +
