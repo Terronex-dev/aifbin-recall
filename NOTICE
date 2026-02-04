@@ -1,0 +1,36 @@
+AIF-BIN Recall
+Copyright 2026 Terronex
+
+This product includes software developed by Terronex.
+https://github.com/Terronex-dev
+
+TRADEMARKS
+----------
+"AIF-BIN", "AIF-BIN Recall", "AIF-BIN Pro", and the Terronex name and logo 
+are trademarks of Terronex. Use of these trademarks without prior written 
+permission from Terronex is prohibited.
+
+The MIT license granted herein does not include any license to use 
+Terronex trademarks. You may not use the Terronex name, logo, or 
+AIF-BIN trademarks to endorse or promote products derived from this 
+software without specific prior written permission.
+
+THIRD-PARTY COMPONENTS
+----------------------
+This software includes the following third-party components:
+
+- @xenova/transformers (Apache 2.0) - Local ML model inference
+- better-sqlite3 (MIT) - SQLite bindings
+- express (MIT) - HTTP server
+- msgpackr (MIT) - MessagePack encoding
+- commander (MIT) - CLI framework
+- @modelcontextprotocol/sdk (MIT) - MCP server
+
+See package.json for complete dependency list.
+
+ATTRIBUTION
+-----------
+When redistributing this software or derivative works, you must:
+1. Include this NOTICE file
+2. Include the LICENSE file
+3. Not use Terronex trademarks without permission

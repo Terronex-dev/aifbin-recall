@@ -104,3 +104,7 @@ search:
 ## License
 
 MIT © 2026 Terronex
+
+## Trademarks
+
+"AIF-BIN", "AIF-BIN Recall", "AIF-BIN Pro", and the Terronex name are trademarks of Terronex. The MIT license does not grant permission to use these trademarks. See NOTICE file for details.
