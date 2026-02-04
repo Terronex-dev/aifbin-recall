@@ -2,16 +2,16 @@
 
 **Local-first memory server for AI agents.**
 
-Engram indexes collections of [AIF-BIN](https://github.com/terronexdev/aifbin) semantic memory files and provides fast retrieval via HTTP API and MCP (Model Context Protocol) for AI agent integration.
+Engram indexes collections of [AIF-BIN](https://github.com/Terronex-dev/aifbin) semantic memory files and provides fast retrieval via HTTP API and MCP (Model Context Protocol) for AI agent integration.
 
 ## Features
 
-- 🔍 **Semantic Search** — Query memories by meaning using embedded vectors
-- ⚡ **Hybrid Retrieval** — Combine vector similarity with keyword matching
-- 🤖 **MCP Server** — Native integration with AI agents (Claude, OpenClaw, etc.)
-- 🌐 **HTTP API** — RESTful endpoints for any client
-- 📦 **Zero Cloud** — Fully local, no external services required
-- 🗂️ **Collection Management** — Organize memories into logical groups
+- **Semantic Search** — Query memories by meaning using embedded vectors
+- **Hybrid Retrieval** — Combine vector similarity with keyword matching
+- **MCP Server** — Native integration with AI agents (Claude, OpenClaw, etc.)
+- **HTTP API** — RESTful endpoints for any client
+- **Zero Cloud** — Fully local, no external services required
+- **Collection Management** — Organize memories into logical groups
 
 ## Installation
 
@@ -89,7 +89,7 @@ search:
 
 ## How It Works
 
-1. **Indexing**: Engram reads `.aif-bin` files (created by [AIF-BIN Pro](https://github.com/terronexdev/aifbin)) and extracts their embedded vectors and text chunks into a local SQLite database.
+1. **Indexing**: Engram reads `.aif-bin` files (created by [AIF-BIN Pro](https://github.com/Terronex-dev/aifbin-pro)) and extracts their embedded vectors and text chunks into a local SQLite database.
 
 2. **Search**: Queries are embedded using the same model, then matched against indexed vectors using cosine similarity. Optional BM25 keyword matching provides hybrid retrieval.
 
@@ -97,8 +97,8 @@ search:
 
 ## Part of the AIF-BIN Ecosystem
 
-- **[AIF-BIN](https://github.com/terronexdev/aifbin)** — Core specification and SDKs
-- **[AIF-BIN Pro](https://github.com/terronexdev/aifbin-pro)** — CLI for creating .aif-bin files
+- **[AIF-BIN](https://github.com/Terronex-dev/aifbin)** — Core specification and SDKs
+- **[AIF-BIN Pro](https://github.com/Terronex-dev/aifbin-pro)** — CLI for creating .aif-bin files
 - **Engram** — Memory server for querying collections *(you are here)*
 
 ## License
