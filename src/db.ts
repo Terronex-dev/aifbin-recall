@@ -236,6 +236,9 @@ export class EngramDB {
   }
 
   keywordSearch(query: string, collectionId?: string, limit: number = 10): { id: string; score: number }[] {
+    // Escape special FTS5 characters and wrap in quotes for phrase matching
+    const escapedQuery = '"' + query.replace(/"/g, '""') + '"';
+    
     let sql = `
       SELECT chunks.id, bm25(chunks_fts) as score
       FROM chunks_fts
@@ -243,7 +246,7 @@ export class EngramDB {
       WHERE chunks_fts MATCH ?
     `;
     
-    const params: any[] = [query];
+    const params: any[] = [escapedQuery];
     
     if (collectionId) {
       sql += ` AND chunks.collection_id = ?`;

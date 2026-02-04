@@ -1,5 +1,6 @@
 /**
  * AIF-BIN file indexer for Engram
+ * Parses AIF-BIN v2 binary format
  */
 
 import fs from 'fs';
@@ -8,66 +9,148 @@ import { unpack } from 'msgpackr';
 import type { AifBinFile, AifBinChunk, AifBinHeader, MemoryChunk, IndexOptions } from './types.js';
 import { EngramDB } from './db.js';
 
-// AIF-BIN v2 magic bytes
-const MAGIC = new Uint8Array([0x41, 0x49, 0x46, 0x42, 0x49, 0x4e, 0x00, 0x01]); // "AIFBIN\x00\x01"
+// AIF-BIN v2 constants
+const MAGIC = Buffer.from([0x41, 0x49, 0x46, 0x42, 0x49, 0x4e, 0x00, 0x01]); // "AIFBIN\x00\x01"
+const HEADER_SIZE = 64;
+const ABSENT_OFFSET = BigInt('0xFFFFFFFFFFFFFFFF');
+
+// Chunk types
+enum ChunkType {
+  TEXT = 1,
+  TABLE_JSON = 2,
+  IMAGE = 3,
+  AUDIO = 4,
+  VIDEO = 5,
+  CODE = 6,
+}
 
 /**
  * Parse an AIF-BIN v2 file
  */
 export function parseAifBinFile(filePath: string): AifBinFile {
   const buffer = fs.readFileSync(filePath);
-  const data = new Uint8Array(buffer);
+  
+  if (buffer.length < HEADER_SIZE) {
+    throw new Error(`File too small: ${filePath}`);
+  }
 
   // Verify magic bytes
-  const magic = data.slice(0, 8);
-  if (!magic.every((byte, i) => byte === MAGIC[i])) {
+  const magic = buffer.subarray(0, 8);
+  if (!magic.equals(MAGIC)) {
     throw new Error(`Invalid AIF-BIN file: bad magic bytes in ${filePath}`);
   }
 
-  // Parse header (bytes 8-39)
-  const view = new DataView(buffer.buffer, buffer.byteOffset);
-  const version = view.getUint16(8, true);
-  const flags = view.getUint16(10, true);
-  const chunkCount = view.getUint32(12, true);
-  const embeddingDim = view.getUint32(16, true);
-  const createdAt = Number(view.getBigUint64(20, true));
-  const modifiedAt = Number(view.getBigUint64(28, true));
-  // Reserved: bytes 36-39
+  // Parse header (64 bytes)
+  const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  
+  const version = view.getUint32(8, true);
+  // padding at 12-15
+  const metadataOffset = view.getBigUint64(16, true);
+  const originalRawOffset = view.getBigUint64(24, true);
+  const contentChunksOffset = view.getBigUint64(32, true);
+  const versionsOffset = view.getBigUint64(40, true);
+  const footerOffset = view.getBigUint64(48, true);
+  const totalSize = view.getBigUint64(56, true);
 
   const header: AifBinHeader = {
-    magic,
+    magic: new Uint8Array(magic),
     version,
-    flags,
-    chunkCount,
-    embeddingDim,
-    createdAt,
-    modifiedAt,
+    flags: 0,
+    chunkCount: 0,
+    embeddingDim: 0,
+    createdAt: 0,
+    modifiedAt: 0,
   };
 
-  // Parse body (MessagePack encoded, starts at byte 40)
-  const bodyStart = 40;
-  
-  // Find footer (last 16 bytes: 8-byte CRC64 + 8-byte file size)
-  const footerStart = buffer.length - 16;
-  const bodyData = buffer.slice(bodyStart, footerStart);
+  // Parse metadata section
+  let metadata: Record<string, unknown> = {};
+  if (metadataOffset !== ABSENT_OFFSET) {
+    const metaStart = Number(metadataOffset);
+    const metaLength = view.getBigUint64(metaStart, true);
+    const metaData = buffer.subarray(metaStart + 8, metaStart + 8 + Number(metaLength));
+    try {
+      metadata = unpack(metaData) as Record<string, unknown>;
+    } catch (e) {
+      // Metadata parse failed, continue with empty
+    }
+  }
 
-  // Decode MessagePack body
-  const body = unpack(bodyData) as {
-    metadata?: Record<string, unknown>;
-    chunks: Array<{
-      id: string;
-      text: string;
-      embedding: number[];
-      metadata?: Record<string, unknown>;
-    }>;
-  };
+  // Parse content chunks section
+  const chunks: AifBinChunk[] = [];
+  if (contentChunksOffset !== ABSENT_OFFSET) {
+    const chunksStart = Number(contentChunksOffset);
+    const chunkCount = view.getUint32(chunksStart, true);
+    header.chunkCount = chunkCount;
+    
+    let offset = chunksStart + 4;
+    
+    for (let i = 0; i < chunkCount; i++) {
+      try {
+        const chunkType = view.getUint32(offset, true);
+        offset += 4;
+        
+        const dataLength = Number(view.getBigUint64(offset, true));
+        offset += 8;
+        
+        const metadataLength = Number(view.getBigUint64(offset, true));
+        offset += 8;
+        
+        // Parse chunk metadata
+        let chunkMeta: Record<string, unknown> = {};
+        if (metadataLength > 0) {
+          const chunkMetaData = buffer.subarray(offset, offset + metadataLength);
+          try {
+            chunkMeta = unpack(chunkMetaData) as Record<string, unknown>;
+          } catch (e) {
+            // Skip bad metadata
+          }
+          offset += metadataLength;
+        }
+        
+        // Parse chunk data
+        const chunkData = buffer.subarray(offset, offset + dataLength);
+        offset += dataLength;
+        
+        // Extract text content based on chunk type
+        let text = '';
+        if (chunkType === ChunkType.TEXT || chunkType === ChunkType.CODE) {
+          text = chunkData.toString('utf-8');
+        } else if (chunkType === ChunkType.TABLE_JSON) {
+          try {
+            const tableData = JSON.parse(chunkData.toString('utf-8'));
+            text = JSON.stringify(tableData);
+          } catch {
+            text = chunkData.toString('utf-8');
+          }
+        }
+        
+        // Extract embedding if present in chunk metadata
+        const embedding = (chunkMeta.embedding as number[]) || [];
+        if (embedding.length > 0 && header.embeddingDim === 0) {
+          header.embeddingDim = embedding.length;
+        }
+        
+        chunks.push({
+          id: (chunkMeta.id as string) || crypto.randomUUID(),
+          text,
+          embedding,
+          metadata: chunkMeta,
+        });
+      } catch (e) {
+        // Skip malformed chunk
+        console.error(`  Warning: Failed to parse chunk ${i} in ${path.basename(filePath)}`);
+        break;
+      }
+    }
+  }
 
-  const chunks: AifBinChunk[] = body.chunks.map(c => ({
-    id: c.id,
-    text: c.text,
-    embedding: c.embedding,
-    metadata: c.metadata || {},
-  }));
+  // Extract timestamps from metadata if available
+  if (metadata.created_at) {
+    header.createdAt = new Date(metadata.created_at as string).getTime();
+  }
+  if (metadata.modified_at) {
+    header.modifiedAt = new Date(metadata.modified_at as string).getTime();
+  }
 
   return {
     header,
@@ -113,11 +196,18 @@ export class Indexer {
   indexFile(filePath: string, collectionId: string): number {
     const aifbin = parseAifBinFile(filePath);
     
+    // Skip files with no chunks or no embeddings
+    const chunksWithEmbeddings = aifbin.chunks.filter(c => c.embedding.length > 0);
+    if (chunksWithEmbeddings.length === 0) {
+      console.log(`  Skipped: ${path.basename(filePath)} (no embeddings)`);
+      return 0;
+    }
+    
     // Delete existing chunks from this file (for re-indexing)
     this.db.deleteChunksBySource(filePath);
 
     // Convert to MemoryChunks and insert
-    const chunks: Omit<MemoryChunk, 'createdAt' | 'updatedAt'>[] = aifbin.chunks.map((chunk, index) => ({
+    const chunks: Omit<MemoryChunk, 'createdAt' | 'updatedAt'>[] = chunksWithEmbeddings.map((chunk, index) => ({
       id: chunk.id || crypto.randomUUID(),
       collectionId,
       sourceFile: filePath,
@@ -152,11 +242,16 @@ export class Indexer {
     const files = findAifBinFiles(dir, recursive);
     
     let totalChunks = 0;
+    let successFiles = 0;
+    
     for (const file of files) {
       try {
         const count = this.indexFile(file, col.id);
-        totalChunks += count;
-        console.log(`  Indexed: ${path.basename(file)} (${count} chunks)`);
+        if (count > 0) {
+          totalChunks += count;
+          successFiles++;
+          console.log(`  Indexed: ${path.basename(file)} (${count} chunks)`);
+        }
       } catch (err) {
         console.error(`  Failed: ${path.basename(file)} - ${err}`);
       }
@@ -165,7 +260,7 @@ export class Indexer {
     // Update collection stats
     this.db.updateCollectionStats(col.id);
 
-    return { files: files.length, chunks: totalChunks };
+    return { files: successFiles, chunks: totalChunks };
   }
 
   /**
