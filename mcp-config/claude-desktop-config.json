@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "aifbin-recall": {
+      "command": "npx",
+      "args": ["@terronex-dev/aifbin-recall", "mcp"],
+      "env": {
+        "RECALL_DATA_DIR": "~/Documents/memories",
+        "RECALL_MODEL": "Xenova/all-MiniLM-L6-v2"
+      }
+    }
+  }
+}
