@@ -20,33 +20,20 @@ AIF-BIN Recall indexes collections of [AIF-BIN](https://github.com/Terronex-dev/
 
 ## Installation
 
-### Linux / macOS
+Install the CLI globally using your preferred Node.js package manager:
 
 ```bash
 # Using npm (recommended)
 npm install -g @terronex/aifbin-recall
 
-# Using Bun
+# Using yarn
+yarn global add @terronex/aifbin-recall
+
+# Using pnpm
+pnpm add -g @terronex/aifbin-recall
+
+# Using Bun (Linux / macOS)
 bun install -g @terronex/aifbin-recall
-
-# Using yarn
-yarn global add @terronex/aifbin-recall
-
-# Using pnpm
-pnpm add -g @terronex/aifbin-recall
-```
-
-### Windows
-
-```powershell
-# Using npm (recommended)
-npm install -g @terronex/aifbin-recall
-
-# Using yarn
-yarn global add @terronex/aifbin-recall
-
-# Using pnpm
-pnpm add -g @terronex/aifbin-recall
 ```
 
 ### From Source
