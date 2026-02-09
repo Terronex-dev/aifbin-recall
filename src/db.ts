@@ -223,6 +223,46 @@ export class EngramDB {
     return result.changes;
   }
 
+  deleteChunk(id: string): boolean {
+    const stmt = this.db.prepare(`DELETE FROM chunks WHERE id = ?`);
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  listFiles(collectionId?: string): { sourceFile: string; chunkCount: number }[] {
+    let stmt;
+    if (collectionId) {
+      stmt = this.db.prepare(`
+        SELECT source_file, COUNT(*) as chunk_count 
+        FROM chunks 
+        WHERE collection_id = ? 
+        GROUP BY source_file 
+        ORDER BY source_file
+      `);
+      return (stmt.all(collectionId) as any[]).map(row => ({
+        sourceFile: row.source_file,
+        chunkCount: row.chunk_count,
+      }));
+    } else {
+      stmt = this.db.prepare(`
+        SELECT source_file, COUNT(*) as chunk_count 
+        FROM chunks 
+        GROUP BY source_file 
+        ORDER BY source_file
+      `);
+      return (stmt.all() as any[]).map(row => ({
+        sourceFile: row.source_file,
+        chunkCount: row.chunk_count,
+      }));
+    }
+  }
+
+  getChunksBySourceFile(sourceFile: string): MemoryChunk[] {
+    const stmt = this.db.prepare(`SELECT * FROM chunks WHERE source_file = ? ORDER BY chunk_index`);
+    const rows = stmt.all(sourceFile) as any[];
+    return rows.map(row => this.rowToChunk(row));
+  }
+
   // Search operations
   getAllChunksWithEmbeddings(collectionId?: string): MemoryChunk[] {
     let stmt;

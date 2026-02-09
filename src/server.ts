@@ -4,6 +4,7 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
 import type { ServerConfig, SearchOptions } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 import { EngramDB } from './db.js';
@@ -27,6 +28,9 @@ export function createServer(options: ServerOptions): express.Application {
   // Middleware
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
+  
+  // Serve static files from public directory
+  app.use(express.static(path.join(process.cwd(), 'public')));
 
   // Health check
   app.get('/health', (_req: Request, res: Response) => {
@@ -98,10 +102,19 @@ export function createServer(options: ServerOptions): express.Application {
     return embedder;
   }
 
+  // Helper to strip embedding from metadata (it's huge and rarely needed in responses)
+  function cleanMetadata(metadata: Record<string, unknown> | undefined, verbose: boolean): Record<string, unknown> | undefined {
+    if (!metadata) return undefined;
+    if (verbose) return metadata;
+    // Strip out the embedding array, keep everything else
+    const { embedding, embeddingDim, ...rest } = metadata as Record<string, unknown>;
+    return Object.keys(rest).length > 0 ? rest : undefined;
+  }
+
   // Search - accepts either embedding array OR text query (will embed automatically)
   app.post('/search', async (req: Request, res: Response) => {
     try {
-      const { embedding, query, text, collection, limit, threshold, hybridWeight, model } = req.body;
+      const { embedding, query, text, collection, limit, threshold, hybridWeight, model, verbose } = req.body;
       
       // Use 'query' or 'text' for the search text
       const queryText = query || text;
@@ -136,6 +149,7 @@ export function createServer(options: ServerOptions): express.Application {
         results = await search.search(queryEmbedding, options);
       }
 
+      const includeVerbose = verbose === true;
       res.json({
         results: results.map(r => ({
           id: r.chunk.id,
@@ -145,7 +159,7 @@ export function createServer(options: ServerOptions): express.Application {
           keywordScore: r.keywordScore,
           sourceFile: r.chunk.sourceFile,
           chunkIndex: r.chunk.chunkIndex,
-          metadata: r.chunk.metadata,
+          ...(cleanMetadata(r.chunk.metadata, includeVerbose) && { metadata: cleanMetadata(r.chunk.metadata, includeVerbose) }),
         })),
       });
     } catch (err) {
@@ -156,7 +170,7 @@ export function createServer(options: ServerOptions): express.Application {
   // GET search - simple text query
   app.get('/search', async (req: Request, res: Response) => {
     try {
-      const { q, query, collection, limit } = req.query;
+      const { q, query, collection, limit, verbose } = req.query;
       const queryText = (q || query) as string;
 
       if (!queryText) {
@@ -178,6 +192,7 @@ export function createServer(options: ServerOptions): express.Application {
 
       const results = await search.hybridSearch(queryEmbedding, queryText, options);
 
+      const includeVerbose = verbose === 'true' || verbose === '1';
       res.json({
         query: queryText,
         results: results.map(r => ({
@@ -188,7 +203,7 @@ export function createServer(options: ServerOptions): express.Application {
           keywordScore: r.keywordScore,
           sourceFile: r.chunk.sourceFile,
           chunkIndex: r.chunk.chunkIndex,
-          metadata: r.chunk.metadata,
+          ...(cleanMetadata(r.chunk.metadata, includeVerbose) && { metadata: cleanMetadata(r.chunk.metadata, includeVerbose) }),
         })),
       });
     } catch (err) {
@@ -241,6 +256,87 @@ export function createServer(options: ServerOptions): express.Application {
     } catch (err) {
       res.status(500).json({ error: String(err) });
     }
+  });
+
+  // List all unique files
+  app.get('/files', (req: Request, res: Response) => {
+    try {
+      const { collection } = req.query;
+      const collectionObj = collection ? db.getCollection(collection as string) : null;
+      const files = db.listFiles(collectionObj?.id);
+      res.json({ files });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
+  // Get chunks for a specific file
+  app.get('/files/:path(*)', (req: Request, res: Response) => {
+    try {
+      const filePath = '/' + req.params.path;
+      const chunks = db.getChunksBySourceFile(filePath);
+      if (chunks.length === 0) {
+        res.status(404).json({ error: 'File not found' });
+        return;
+      }
+      res.json({
+        file: filePath,
+        chunks: chunks.map(c => ({
+          id: c.id,
+          text: c.text,
+          chunkIndex: c.chunkIndex,
+          createdAt: c.createdAt,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
+  // Delete a specific chunk
+  app.delete('/chunks/:id', (req: Request, res: Response) => {
+    try {
+      const chunk = db.getChunk(req.params.id);
+      if (!chunk) {
+        res.status(404).json({ error: 'Chunk not found' });
+        return;
+      }
+      const deleted = db.deleteChunk(req.params.id);
+      if (deleted) {
+        db.updateCollectionStats(chunk.collectionId);
+      }
+      res.json({ deleted });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
+  // Delete all chunks from a file
+  app.delete('/files/:path(*)', (req: Request, res: Response) => {
+    try {
+      const filePath = '/' + req.params.path;
+      const chunks = db.getChunksBySourceFile(filePath);
+      if (chunks.length === 0) {
+        res.status(404).json({ error: 'File not found' });
+        return;
+      }
+      const collectionId = chunks[0].collectionId;
+      const count = db.deleteChunksBySource(filePath);
+      db.updateCollectionStats(collectionId);
+      res.json({ deleted: count });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
+  // Server settings/config endpoint
+  app.get('/settings', (_req: Request, res: Response) => {
+    res.json({
+      version: '0.1.0',
+      embeddingModel: 'minilm',
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
   });
 
   // Error handler

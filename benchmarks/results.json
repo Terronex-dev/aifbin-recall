@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-02-05T05:01:10.138Z",
+  "platform": "linux",
+  "nodeVersion": "v22.22.0",
+  "results": [
+    {
+      "name": "Cosine Similarity (384 dims)",
+      "iterations": 10000,
+      "totalMs": 4.736038999999636,
+      "avgMs": 0.00047360389999996356,
+      "minMs": 0.00027599999999949887,
+      "maxMs": 0.40850399999999354,
+      "opsPerSec": 2111469.098966619,
+      "memoryMB": 0.9824371337890625
+    },
+    {
+      "name": "Search 1000 chunks",
+      "iterations": 1000,
+      "totalMs": 389.10239299999995,
+      "avgMs": 0.38910239299999994,
+      "minMs": 0.3380469999999889,
+      "maxMs": 0.6548999999999978,
+      "opsPerSec": 2570.0176045948915,
+      "memoryMB": 2.1430587768554688
+    },
+    {
+      "name": "Search 10000 chunks",
+      "iterations": 100,
+      "totalMs": 480.73403899999926,
+      "avgMs": 4.807340389999992,
+      "minMs": 4.532330999999999,
+      "maxMs": 6.699758999999972,
+      "opsPerSec": 208.01522648160173,
+      "memoryMB": -1.3285903930664062
+    },
+    {
+      "name": "Search 100000 chunks",
+      "iterations": 10,
+      "totalMs": 480.3687250000007,
+      "avgMs": 48.03687250000007,
+      "minMs": 46.85846500000025,
+      "maxMs": 49.57943599999999,
+      "opsPerSec": 20.817341928328045,
+      "memoryMB": 3.2546920776367188
+    },
+    {
+      "name": "Chunk 10k words",
+      "iterations": 1000,
+      "totalMs": 462.7060410000022,
+      "avgMs": 0.4627060410000022,
+      "minMs": 0.39231299999983094,
+      "maxMs": 1.4014230000002499,
+      "opsPerSec": 2161.199360697336,
+      "memoryMB": -11.803176879882812
+    },
+    {
+      "name": "MessagePack encode (100 chunks)",
+      "iterations": 100,
+      "totalMs": 50.30624999999873,
+      "avgMs": 0.5030624999999873,
+      "minMs": 0.29898199999979624,
+      "maxMs": 2.224897999999939,
+      "opsPerSec": 1987.8245744813523,
+      "memoryMB": 3.2159576416015625
+    },
+    {
+      "name": "MessagePack decode (100 chunks)",
+      "iterations": 100,
+      "totalMs": 47.53648100000146,
+      "avgMs": 0.47536481000001457,
+      "minMs": 0.37827400000014677,
+      "maxMs": 1.5916529999999511,
+      "opsPerSec": 2103.647512317896,
+      "memoryMB": 1.8763656616210938
+    }
+  ]
+}
