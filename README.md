@@ -1,5 +1,8 @@
 # AIF-BIN Recall
 
+[![npm version](https://img.shields.io/npm/v/aifbin-recall.svg)](https://www.npmjs.com/package/aifbin-recall)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 **Local-first memory server for AI agents.**
 
 AIF-BIN Recall indexes collections of [AIF-BIN](https://github.com/Terronex-dev/aifbin) semantic memory files and provides fast retrieval via HTTP API and MCP (Model Context Protocol) for AI agent integration.
@@ -24,16 +27,16 @@ Install the CLI globally using your preferred Node.js package manager:
 
 ```bash
 # Using npm (recommended)
-npm install -g @terronex/aifbin-recall
+npm install -g aifbin-recall
 
 # Using yarn
-yarn global add @terronex/aifbin-recall
+yarn global add aifbin-recall
 
 # Using pnpm
-pnpm add -g @terronex/aifbin-recall
+pnpm add -g aifbin-recall
 
 # Using Bun (Linux / macOS)
-bun install -g @terronex/aifbin-recall
+bun install -g aifbin-recall
 ```
 
 ### From Source
