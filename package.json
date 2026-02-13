@@ -1,5 +1,5 @@
 {
-  "name": "@terronex-dev/aifbin-recall",
+  "name": "aifbin-recall",
   "version": "0.1.0",
   "description": "Local-first memory server for AI agents. Query AIF-BIN semantic memory files via HTTP/MCP.",
   "main": "dist/index.js",
@@ -32,7 +32,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/terronexdev/aifbin-recall.git"
+    "url": "https://github.com/Terronex-dev/aifbin-recall.git"
   },
   "homepage": "https://github.com/Terronex-dev/aifbin-recall#readme",
   "bugs": {
